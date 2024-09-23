@@ -1,0 +1,22 @@
+agents:
+  - name: DataFetcherAgent
+    file: agents/data_fetcher_agent.py
+
+  - name: GPT4QueryAgent
+    file: agents/gpt4_query_agent.py
+
+  - name: ResultValidatorAgent
+    file: agents/result_validator_agent.py
+
+communication:
+  - from: DataFetcherAgent
+    to: GPT4QueryAgent
+    event: query
+
+  - from: GPT4QueryAgent
+    to: ResultValidatorAgent
+    event: validate
+
+logging:
+  level: INFO
+  output: logs/agent_logs.txt

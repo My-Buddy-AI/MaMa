@@ -1,0 +1,10 @@
+tasks:
+  - from: DataFetcherAgent
+    to: GPT4QueryAgent
+    event: query
+    data: questions
+
+  - from: GPT4QueryAgent
+    to: ResultValidatorAgent
+    event: validate
+    data: gpt_responses

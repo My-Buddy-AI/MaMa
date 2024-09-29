@@ -4,21 +4,25 @@ import yaml
 from typing import Dict
 from .pml import PMLMessage
 from .network import send_message
-
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 class CrewAIAgent:
     """
     CrewAI agent that dynamically registers with MAMA using PML. It updates its relevance score
-    based on reinforcement learning feedback after each query.
+    based on reinforcement learning feedback after each query. It also handles agent similarity
+    when no direct match is found.
     """
 
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, training_mode=False):
         """
         Initialize the CrewAI agent from a YAML configuration file.
 
         Args:
             config_path (str): The path to the agent's YAML configuration file.
+            training_mode (bool): Whether the agent is in training mode.
         """
+        self.training_mode = training_mode
         self.config_path = config_path
         self.load_config(config_path)
         self.popularity = 0
@@ -75,6 +79,10 @@ class CrewAIAgent:
         # Extract markup prompts from the query
         markup = self.extract_markup(query)
 
+        # If in training mode, update the agent's knowledge
+        if self.training_mode:
+            self.train_agent(query, markup)
+
         # Calculate relevance score based on the agent's profile and the markup
         relevance = self.evaluate(query, markup)
 
@@ -89,6 +97,16 @@ class CrewAIAgent:
 
         # Send the PML message with the relevance score to the Registrar
         self.send_pml(query, result, relevance)
+
+    def train_agent(self, query: str, markup: Dict[str, float]):
+        """Train the agent based on the input query and markup."""
+        print(f"Training {self.name} with query: {query}")
+        if "positive" in query:
+            self.relevance_score += 0.1  # Increase the relevance for positive queries
+        elif "negative" in query:
+            self.relevance_score += 0.1  # Increase the relevance for negative queries
+        elif "sarcasm" in query:
+            self.relevance_score += 0.1  # Increase the relevance for sarcasm
 
     def process_query(self, query: str, markup: Dict[str, float]) -> str:
         """Process the query based on the content and return a response."""
@@ -135,3 +153,20 @@ class CrewAIAgent:
         pml_message = PMLMessage(agent_name=self.name, query=query, result=result, relevance=relevance, agent_port=self.reply_port)
         print(f"Agent {self.name} sending PML: {pml_message}")
         send_message(self.pml_port, pml_message.to_dict())
+
+    @staticmethod
+    def calculate_similarity(agent_profile: Dict[str, float], query_markup: Dict[str, float]) -> float:
+        """
+        Calculate cosine similarity between agent's profile and query markup.
+        
+        Args:
+            agent_profile: The agent's sentiment profile (e.g., {"positive": 1.0, "negative": 0.2})
+            query_markup: The query markup extracted from the input query.
+        
+        Returns:
+            float: The cosine similarity score.
+        """
+        profile_vector = np.array(list(agent_profile.values())).reshape(1, -1)
+        markup_vector = np.array(list(query_markup.values())).reshape(1, -1)
+        similarity_score = cosine_similarity(profile_vector, markup_vector)[0][0]
+        return similarity_score

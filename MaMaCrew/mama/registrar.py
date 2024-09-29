@@ -1,4 +1,8 @@
+import json
+import os
 from .network import receive_message
+
+PML_STORAGE_FILE = 'pml_data.json'
 
 class MAMARegistrar:
     """
@@ -8,7 +12,7 @@ class MAMARegistrar:
 
     def __init__(self, port: int = 8089):
         self.port = port
-        self.agent_registry = {}  # Store agents with their relevance and address
+        self.agent_registry = self.load_pml_data()  # Load PML data from storage
         print(f"MAMA Registrar initialized on port {self.port}.")
 
     def listen_for_registration(self):
@@ -32,6 +36,8 @@ class MAMARegistrar:
             'port': agent_port
         }
 
+        # Save the updated registry to persistent storage
+        self.save_pml_data()
         print(f"Registered agent '{agent_name}' at {agent_address}:{agent_port} with relevance score: {relevance_score}")
 
     def evaluate_agents(self, query: str):
@@ -51,3 +57,15 @@ class MAMARegistrar:
         else:
             print(f"No agents available for query '{query}'")
             return None
+
+    def save_pml_data(self):
+        """Save the PML data to a file for permanent storage."""
+        with open(PML_STORAGE_FILE, 'w') as file:
+            json.dump(self.agent_registry, file)
+
+    def load_pml_data(self):
+        """Load the PML data from a file (if exists) or initialize an empty registry."""
+        if os.path.exists(PML_STORAGE_FILE):
+            with open(PML_STORAGE_FILE, 'r') as file:
+                return json.load(file)
+        return {}  # Return an empty dictionary if no file exists

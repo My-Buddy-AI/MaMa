@@ -35,7 +35,7 @@ class CrewAIAgent:
 
         print(f"Agent '{self.name}' initialized with ports: receive={self.receive_port}, reply={self.reply_port}, PML={self.pml_port}")
 
-        # Register agent with MAMA registrar using PML
+        # Register agent with MAMA registrar using PML, retrying if the registration fails
         self.register_with_mama()
 
     def load_config(self, config_path: str):
@@ -54,23 +54,35 @@ class CrewAIAgent:
         return port
 
     def register_with_mama(self):
-        """Register the agent with the MAMA registrar using PML."""
-        print(f"Registering {self.name} with MAMA registrar.")
+        """Register the agent with the MAMA registrar using PML. Retry on failure."""
+        success = False
+        while not success:
+            try:
+                print(f"Registering {self.name} with MAMA registrar at port {self.receive_port}...")
 
-        # Get the agent's IP address
-        hostname = socket.gethostname()
-        agent_address = socket.gethostbyname(hostname)
+                # Get the agent's IP address
+                hostname = socket.gethostname()
+                agent_address = socket.gethostbyname(hostname)
 
-        pml_data = {
-            'agent_name': self.name,
-            'expertise_profile': self.profile,
-            'relevance': self.relevance_score,
-            'address': agent_address,
-            'port': self.receive_port
-        }
+                pml_data = {
+                    'agent_name': self.name,
+                    'expertise_profile': self.profile,
+                    'relevance': self.relevance_score,
+                    'address': agent_address,
+                    'port': self.receive_port
+                }
 
-        # Send registration request via PML to Registrar
-        send_message(self.pml_port, pml_data)
+                # Send registration request via PML to Registrar
+                send_message(self.pml_port, pml_data)
+                success = True
+                print(f"Agent '{self.name}' successfully registered with MAMA.")
+
+            except Exception as e:
+                print(f"Failed to register {self.name} on port {self.receive_port}. Error: {e}")
+                # Assign new ports and try again
+                self.receive_port = self.assign_dynamic_port()
+                self.reply_port = self.assign_dynamic_port()
+                print(f"Retrying registration with new ports: receive={self.receive_port}, reply={self.reply_port}")
 
     def receive_request(self, query: str):
         """Receive a query, process it, and send the PML message."""
@@ -107,6 +119,8 @@ class CrewAIAgent:
             self.relevance_score += 0.1  # Increase the relevance for negative queries
         elif "sarcasm" in query:
             self.relevance_score += 0.1  # Increase the relevance for sarcasm
+        elif "neutral" in query:
+            self.relevance_score += 0.1  # Increase the relevance for sarcasm
 
     def process_query(self, query: str, markup: Dict[str, float]) -> str:
         """Process the query based on the content and return a response."""
@@ -139,7 +153,8 @@ class CrewAIAgent:
             "positive": 0.8 if "good" in query or "happy" in query else 0.2,
             "negative": 0.8 if "bad" in query or "sad" in query else 0.2,
             "sarcasm": 0.9 if "not" in query and "happy" in query else 0.1,
-            "complexity": 0.5 if "complex" in query else 0.2
+            "complexity": 0.5 if "complex" in query else 0.2,
+            "neutral": 0.9 if "neutral" in query else 0.2
         }
         return markup
 

@@ -18,16 +18,21 @@ registrar_thread.start()
 # Initialize the MAMA framework
 mama_framework = MAMAFramework(registrar=MAMARegistrar())
 
-# Load CrewAI agent configurations
-with open('MaMaCrew/configs/creawai_config.yaml', 'r') as file:
-    config = yaml.safe_load(file)
+# Load multiple CrewAI agent configurations from a directory or a list of config files
+config_files = [
+    'MaMaCrew/agents/positive_agent.yaml',
+    'MaMaCrew/agents/negative_agent.yaml',
+    'MaMaCrew/agents/sarcasm_agent.yaml',
+    'MaMaCrew/agents/neutral_agent.yaml'
+]
 
-# Register all CrewAI agents from the configuration file (in training mode)
 agents = []
-for agent_config in config['agents']:
-    agent = CrewAIAgent(agent_config['path'], training_mode=True)  # Training mode is set to True
-    agents.append(agent)
-    mama_framework.add_agent(agent)
+for config_path in config_files:
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+        agent = CrewAIAgent(config_path, training_mode=True)  # Initialize the agent in training mode
+        agents.append(agent)
+        mama_framework.add_agent(agent)  # Add the agent to the MAMA framework
 
 # Load SST-2 Dataset from Hugging Face
 dataset = load_dataset("glue", "sst2")
@@ -50,11 +55,9 @@ with open('sst2_mama_training_evaluation_results.csv', mode='w', newline='') as 
         labeled_answer = "positive" if label == 1 else "negative"
         
         if label == 1:
-            # Positive sentiment query for positive agent
             query += " good"  # Positive query for training
             selected_agent = mama_framework.process_query(query)
         else:
-            # Negative sentiment query for negative agent
             query += " bad"  # Negative query for training
             selected_agent = mama_framework.process_query(query)
 
@@ -66,7 +69,7 @@ with open('sst2_mama_training_evaluation_results.csv', mode='w', newline='') as 
 
 print("Training phase completed. Results written to 'sst2_mama_training_evaluation_results.csv'.")
 
-### Validation Phase: Evaluate on the evaluation set (which we can simulate from the test set)
+### Evaluation Phase: Evaluate on the evaluation set (which we can simulate from the test set)
 validation_data = dataset["validation"] if "validation" in dataset else dataset["test"]  # In case SST-2 doesn't have validation split
 y_true = []
 y_pred = []

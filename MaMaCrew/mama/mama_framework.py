@@ -97,7 +97,8 @@ class MAMAFramework:
         markup = {
             "positive": 1.0 if "good" in query or "happy" in query else 0.0,
             "negative": 1.0 if "bad" in query or "sad" in query else 0.0,
-            "sarcasm": 1.0 if "not" in query and "good" in query else 0.0
+            "sarcasm": 1.0 if "not" in query and "good" in query else 0.0,
+            "neutral":1.0 if "neutral" in query and "neutral" in query else 0.0,
         }
         return markup
 
@@ -117,4 +118,6 @@ class MAMAFramework:
             return "negative"
         elif markup.get("sarcasm", 0) > 0:
             return "sarcasm"
+        elif markup.get("neutral", 0) > 0:
+            return "neutral"
         return "neutral"

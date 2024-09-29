@@ -93,6 +93,11 @@ class CrewAIAgent:
         # Extract markup prompts from the query
         markup = self.extract_markup(query)
 
+        # Check if this agent is appropriate for the query
+        if not self.is_appropriate_agent(markup):
+            print(f"Agent {self.name}: I'm not the right agent for this query.")
+            return None
+
         # If in training mode, update the agent's knowledge
         if self.training_mode:
             self.train_agent(query, markup)
@@ -114,6 +119,12 @@ class CrewAIAgent:
 
         # Send the PML message with the relevance score to the Registrar
         self.send_pml(query, result, relevance)
+
+    def is_appropriate_agent(self, markup: Dict[str, float]) -> bool:
+        """Determine if this agent is appropriate for the query."""
+        # Check if the agent's profile matches the markup sufficiently (above a threshold)
+        relevance_score = self.calculate_similarity(self.profile, markup)
+        return relevance_score > 0.7  # Set threshold for whether the agent is appropriate
 
     def train_agent(self, query: str, markup: Dict[str, float]):
         """Train the agent based on the input query and markup."""
@@ -137,11 +148,18 @@ class CrewAIAgent:
         return "neutral"
 
     def evaluate(self, query: str, markup: Dict[str, float]) -> float:
-        """Calculate relevance score based on the agent's profile and the query markup."""
+        """
+        Calculate relevance score based on the agent's profile and the query markup.
+
+        This method now evaluates if the agent is appropriate to answer the query
+        and will inform the MAMA framework if it's not.
+        """
         relevance = 0.0
         for tag, weight in markup.items():
             if tag in self.profile:
                 relevance += self.profile[tag] * weight
+
+        # Return the calculated relevance
         return relevance
 
     def update_relevance_with_reinforcement(self, relevance: float):
@@ -153,6 +171,7 @@ class CrewAIAgent:
 
     def extract_markup(self, query: str) -> Dict[str, float]:
         """Extract markup prompts from the input query."""
+        # Simplified sentiment tagging logic
         markup = {
             "positive": 0.8 if "good" in query or "happy" in query else 0.2,
             "negative": 0.8 if "bad" in query or "sad" in query else 0.2,

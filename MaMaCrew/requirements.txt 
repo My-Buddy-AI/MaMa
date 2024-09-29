@@ -6,3 +6,5 @@ scikit-learn==1.0.2  # For cosine similarity and other ML functions
 numpy==1.21.6        # For vector operations and array handling
 pyyaml==5.4.1        # For handling YAML files
 datasets
+transformers 
+sentence-transformers

@@ -1,34 +1,36 @@
 import random
-from typing import Dict, List
+import socket
+from typing import Dict
 from .pml import PMLMessage
 from .network import send_message
 
+class CrewAIAgent:
+    """
+    Base class for CrewAI agents with dynamic port assignment, prompt-based profiles, and PML communication.
+    This agent can be transformed into a dynamically enabled MAMA agent.
+    """
 
-class AIAgent:
-    """Base class for AI Agents with profiles, ports, and relevance calculation."""
-
-    def __init__(self, name: str, profile: Dict[str, float]):
+    def __init__(self, agent_prompt: str, profile: Dict[str, float]):
         """
-        Initialize the agent with dynamically assigned ports and a profile.
-        
+        Initialize a CrewAI agent dynamically based on the given prompt.
+
         Args:
-            name (str): The name of the agent.
-            profile (Dict[str, float]): Profile describing expertise on different sentiment types.
+            agent_prompt (str): The role or prompt that defines the agent's expertise (e.g., 'Positive Classifier').
+            profile (Dict[str, float]): Profile describing the agent's expertise on different sentiment types.
         """
-        self.name = name
-        self.profile = profile
+        self.name = f"CrewAI Agent - {agent_prompt}"  # The agent's dynamic name based on its prompt
+        self.profile = profile  # Expertise profile (e.g., {"positive": 0.8, "negative": 0.2})
         self.popularity = 0
 
-        # Dynamically assign ports
+        # Dynamically assign ports for MAMA communication
         self.receive_port = self.assign_dynamic_port()
         self.reply_port = self.assign_dynamic_port()
         self.pml_port = self.assign_dynamic_port()
 
-        print(f"Agent {self.name} initialized with ports: receive={self.receive_port}, reply={self.reply_port}, PML={self.pml_port}")
+        print(f"Agent '{self.name}' initialized with ports: receive={self.receive_port}, reply={self.reply_port}, PML={self.pml_port}")
 
     def assign_dynamic_port(self):
         """Assign an available port dynamically."""
-        import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', 0))  # Bind to an available port
         port = s.getsockname()[1]  # Get the dynamically assigned port
@@ -56,6 +58,7 @@ class AIAgent:
 
     def process_query(self, query: str, markup: Dict[str, float]) -> str:
         """Process the query based on the content and return a response."""
+        # Basic example: positive, negative, or neutral based on query content
         if "good" in query:
             return "positive"
         elif "bad" in query:
@@ -90,52 +93,8 @@ class AIAgent:
         print(f"Agent {self.name} sending PML: {pml_message}")
         send_message(self.pml_port, pml_message.to_dict())
 
-
-class PositiveClassifier(AIAgent):
-    def __init__(self):
-        profile = {"positive": 1.0, "negative": 0.2, "sarcasm": 0.1}
-        super().__init__("Positive Classifier", profile)
-
-
-class NegativeClassifier(AIAgent):
-    def __init__(self):
-        profile = {"positive": 0.2, "negative": 1.0, "sarcasm": 0.1}
-        super().__init__("Negative Classifier", profile)
-
-
-class OverallSentimentAggregator:
-    """Aggregates results from multiple agents and provides a final sentiment classification."""
-
-    def __init__(self, agents: List[AIAgent]):
+    def transform_to_mama_agent(self):
         """
-        Initialize the aggregator with a list of agents.
-        
-        Args:
-            agents (List[AIAgent]): A list of agent instances (e.g., PositiveClassifier, NegativeClassifier).
+        Transform the CrewAI agent into a dynamic MAMA agent, enabling it to be part of the MAMA framework.
         """
-        self.agents = agents
-
-    def aggregate(self, query: str) -> str:
-        """Aggregate results from different agents and return the best prediction."""
-        results = []
-        markup = self.extract_markup(query)
-
-        for agent in self.agents:
-            relevance = agent.evaluate(query, markup)
-            result = agent.process_query(query, markup)
-            results.append((agent.name, result, relevance))
-
-        # Sort results by relevance score and return the most relevant agent's result
-        results.sort(key=lambda x: x[2], reverse=True)
-        best_agent, best_result, best_relevance = results[0]
-        print(f"Selected agent: {best_agent} with relevance {best_relevance}")
-        return best_result
-
-    def extract_markup(self, query: str) -> Dict[str, float]:
-        """Extract markup prompts from the input query."""
-        markup = {
-            "positive": 0.8 if "good" in query or "happy" in query else 0.2,
-            "negative": 0.8 if "bad" in query or "sad" in query else 0.2,
-            "sarcasm": 0.9 if "not" in query and "happy" in query else 0.1
-        }
-        return markup
+        print(f"Transforming {self.name} into a MAMA-enabled agent.")

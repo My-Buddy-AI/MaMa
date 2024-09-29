@@ -1,0 +1,4 @@
+# Dependencies for the MAMA system
+json
+socket
+csv

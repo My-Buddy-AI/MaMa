@@ -1,12 +1,13 @@
 import random
 import socket
-import asyncio
+import time  # Import time to replace asyncio.sleep for synchronous waiting
 import yaml
 from typing import Dict
-from .pml import PMLMessage
 from .network import send_message
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from .pml import PMLMessage
+
 
 class CrewAIAgent:
     """
@@ -36,13 +37,7 @@ class CrewAIAgent:
 
         print(f"Agent '{self.name}' initialized with ports: receive={self.receive_port}, reply={self.reply_port}, PML={self.pml_port}")
 
-        # Register agent with MAMA registrar using PML, check if already in an event loop
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # Await the coroutine directly if the event loop is running
-            loop.create_task(self.register_with_mama())
-        else:
-            asyncio.run(self.register_with_mama())
+        self.register_with_mama()  # Register synchronously with retries
 
     def load_config(self, config_path: str):
         """Load the agent's configuration from the YAML file."""
@@ -60,12 +55,16 @@ class CrewAIAgent:
         s.close()
         return port
 
-    async def register_with_mama(self):
-        """Register the agent with the MAMA registrar using PML. Retry on failure."""
+    def register_with_mama(self):
+        """Register the agent with the MAMA registrar using PML. Retry on failure with exponential backoff."""
+        max_retries = 10  # Maximum number of retries
+        retries = 0
+        base_wait_time = 0.1  # Initial wait time of 100ms
         success = False
-        while not success:
+
+        while not success and retries < max_retries:
             try:
-                print(f"Registering {self.name} with MAMA registrar at port {self.receive_port}...")
+                print(f"Attempt {retries + 1}: Registering {self.name} with MAMA registrar at port {self.receive_port}...")
 
                 # Get the agent's IP address
                 hostname = socket.gethostname()
@@ -81,45 +80,33 @@ class CrewAIAgent:
                 }
 
                 # Send registration request via PML to Registrar
-                await send_message(self.pml_port, pml_data)
+                send_message(self.pml_port, pml_data)  # Synchronous message sending
                 success = True
                 print(f"Agent '{self.name}' successfully registered with MAMA.")
 
             except Exception as e:
-                print(f"Failed to register {self.name} on port {self.receive_port}. Error: {e}")
-                # Assign new ports and try again
-                self.receive_port = self.assign_dynamic_port()
-                self.reply_port = self.assign_dynamic_port()
-                print(f"Retrying registration with new ports: receive={self.receive_port}, reply={self.reply_port}")
+                retries += 1
+                print(f"Attempt {retries} failed: Could not register {self.name} on port {self.receive_port}. Error: {e}")
 
-    async def receive_request(self, query: str):
-        """Receive a query, process it, and send the PML message."""
-        print(f"Agent {self.name} received query: {query}")
+                # Exponential backoff: wait time doubles after each failed attempt
+                wait_time = base_wait_time * (2 ** retries)
+                if retries < max_retries:
+                    print(f"Retrying in {wait_time:.2f} seconds...")
 
-        # Extract markup prompts from the query
-        markup = self.extract_markup(query)
+                    # Assign new dynamic ports to try again
+                    self.receive_port = self.assign_dynamic_port()
+                    self.reply_port = self.assign_dynamic_port()
+                    print(f"Retrying registration with new ports: receive={self.receive_port}, reply={self.reply_port}")
 
-        # If in training mode, update the agent's knowledge
-        if self.training_mode:
-            self.train_agent(query, markup)
+                    time.sleep(wait_time)  # Synchronous wait before retrying
+                else:
+                    print(f"Exceeded max retries. Could not register agent '{self.name}' after {retries} attempts.")
+                    return  # Final failure
 
-        # Calculate relevance score based on the agent's profile and the markup
-        relevance = self.evaluate(query, markup)
-
-        # Update relevance score using reinforcement learning (e.g., positive feedback)
-        self.update_relevance_with_reinforcement(relevance)
-
-        # Generate a result based on the query and markup
-        result = self.process_query(query, markup)
-
-        # Propagate the specialty in the response
-        result = f"Agent Specialty: {self.specialty}. Result: {result}"
-
-        # Send the result back to the client
-        await self.send_reply(result)
-
-        # Send the PML message with the relevance score to the Registrar
-        await self.send_pml(query, result, relevance)
+        if success:
+            print(f"Registration of '{self.name}' with MAMA was successful after {retries + 1} attempts.")
+        else:
+            print(f"Registration failed after {max_retries} attempts. Please check the network or registrar service.")
 
     def train_agent(self, query: str, markup: Dict[str, float]):
         """Train the agent based on the input query and markup."""
@@ -168,17 +155,6 @@ class CrewAIAgent:
             "neutral": 0.9 if "neutral" in query else 0.2
         }
         return markup
-
-    async def send_reply(self, result: str):
-        """Send the reply to the client."""
-        print(f"Agent {self.name} sending reply: {result}")
-        await send_message(self.reply_port, {"agent": self.name, "result": result})
-
-    async def send_pml(self, query: str, result: str, relevance: float):
-        """Send a PML (Prompt Markup Language) message to the Registrar."""
-        pml_message = PMLMessage(agent_name=self.name, query=query, result=result, relevance=relevance, agent_port=self.reply_port)
-        print(f"Agent {self.name} sending PML: {pml_message}")
-        await send_message(self.pml_port, pml_message.to_dict())
 
     @staticmethod
     def calculate_similarity(agent_profile: Dict[str, float], query_markup: Dict[str, float]) -> float:

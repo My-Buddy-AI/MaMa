@@ -13,7 +13,6 @@ async def send_message(port: int, message: dict):
         Exception: If the message cannot be sent after retries.
     """
     url = f'http://localhost:{port}'
-
     retries = 0
     max_retries = 10
     wait_time = 0.1  # 100ms
@@ -33,8 +32,9 @@ async def send_message(port: int, message: dict):
 
             if retries < max_retries:
                 await asyncio.sleep(wait_time)
+                wait_time *= 2  # Exponential backoff
             else:
-                raise Exception(f"Exceeded max retries. Could not send message to port {port}.")
+                raise Exception(f"Exceeded max retries. Could not send message to port {port} after {retries} attempts.")
 
 async def receive_message(port: int):
     """
@@ -56,11 +56,13 @@ async def receive_message(port: int):
     server = None
     while retries < max_retries:
         try:
-            # Define a coroutine that will be used to handle connections
+            # Define a coroutine to handle incoming connections
             async def handle_connection(reader, writer):
                 data = await reader.read(1024)
                 message = data.decode()
                 print(f"Received message: {message}")
+                writer.close()
+                await writer.wait_closed()
                 return message
 
             # Create a TCP server to listen on the specified port
@@ -74,8 +76,9 @@ async def receive_message(port: int):
 
             if retries < max_retries:
                 await asyncio.sleep(wait_time)
+                wait_time *= 2  # Exponential backoff
             else:
-                raise Exception(f"Exceeded max retries. Could not receive message on port {port}.")
+                raise Exception(f"Exceeded max retries. Could not receive message on port {port} after {retries} attempts.")
         finally:
             if server:
                 server.close()

@@ -3,6 +3,7 @@ from mama.agent import CrewAIAgent
 from mama.mama_framework import MAMAFramework
 from mama.registrar import MAMARegistrar
 import threading
+from datasets import load_dataset
 
 # Start the MAMA Registrar in a separate thread
 def start_registrar():
@@ -15,30 +16,40 @@ registrar_thread.start()
 # Initialize the MAMA framework
 mama_framework = MAMAFramework(registrar=MAMARegistrar())
 
-# Define and register agents
+# Define sentiment classification agents based on SST-2 task
 agents = [
-    CrewAIAgent("Positive Work", {"positive": 1.0, "negative": 0.2}),
-    CrewAIAgent("Negative Work", {"positive": 0.2, "negative": 1.0}),
-    # Add more agents for different contexts here
+    CrewAIAgent("Positive Sentiment", {"positive": 1.0, "negative": 0.2}),
+    CrewAIAgent("Negative Sentiment", {"positive": 0.2, "negative": 1.0}),
+    CrewAIAgent("Neutral Sentiment", {"positive": 0.5, "negative": 0.5})  # For any neutral sentence
 ]
 
 # Add agents to the MAMA framework
 for agent in agents:
     mama_framework.add_agent(agent)
 
-# Example queries
-queries = [
-    "I love working here!",
-    "This project is a disaster."
-]
+# Load SST-2 Dataset from Hugging Face
+dataset = load_dataset("glue", "sst2")
 
-# Run evaluation and generate CSV output
-with open('mama_evaluation_results.csv', mode='w', newline='') as file:
+# Select the test split for evaluation
+test_data = dataset["test"]
+
+# Open CSV file for writing the evaluation results
+with open('sst2_mama_evaluation_results.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(['Query', 'Selected Agent'])
+    writer.writerow(['Sentence', 'Label', 'Selected Agent', 'Agent Answer'])
 
-    for query in queries:
-        selected_agent = mama_framework.process_query(query)
-        writer.writerow([query, selected_agent])
+    # Iterate over the test dataset
+    for example in test_data:
+        sentence = example['sentence']
+        label = example['label']  # SST-2 labels: 1 (positive), 0 (negative)
 
-print("Evaluation completed. Results written to 'mama_evaluation_results.csv'.")
+        # Convert label to a string for comparison
+        correct_answer = "positive" if label == 1 else "negative"
+
+        # Process the sentence through the MAMA framework
+        selected_agent = mama_framework.process_query(sentence)
+
+        # Write the result to the CSV file
+        writer.writerow([sentence, correct_answer, selected_agent, selected_agent])
+
+print("Evaluation completed. Results written to 'sst2_mama_evaluation_results.csv'.")

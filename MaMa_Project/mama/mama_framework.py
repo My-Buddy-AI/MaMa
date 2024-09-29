@@ -1,20 +1,25 @@
 from .agent import PositiveClassifier, NegativeClassifier, OverallSentimentAggregator
-from .network import send_message
 
 class MAMAFramework:
+    """
+    MAMAFramework is responsible for managing agents and handling the query processing.
+    It aggregates results from multiple agents using the OverallSentimentAggregator and returns the final decision.
+    """
+
     def __init__(self):
         """Initialize MAMA framework with a set of agents."""
         self.agents = [
-            PositiveClassifier(receive_port=5001, reply_port=5002, pml_port=5003),
-            NegativeClassifier(receive_port=5004, reply_port=5005, pml_port=5006),
-            # Add other agents here (e.g., Sarcasm Detector, Neutral Detector, etc.)
+            PositiveClassifier(),  # Positive sentiment classifier
+            NegativeClassifier(),  # Negative sentiment classifier
+            # You can add more agents here, like Sarcasm Detector, Neutral Detector, etc.
         ]
         self.aggregator = OverallSentimentAggregator(self.agents)
 
     def process_query_with_metadata(self, query: str):
         """
-        Process a query using the most relevant agents and return additional metadata.
-        
+        Process a query using the most relevant agents and return additional metadata such as the agent's name,
+        the predicted sentiment, the relevance score, and the popularity.
+
         Args:
             query (str): The input sentence or query.
 
@@ -24,46 +29,16 @@ class MAMAFramework:
         # Extract markup (e.g., sentiment tags) from the query
         markup = self.aggregator.extract_markup(query)
 
-        # Select the most relevant agent
-        selected_agent, relevance = self.select_most_relevant_agent(query, markup)
+        # Aggregate results from all agents and get the best result
+        result = self.aggregator.aggregate(query)
 
-        # Get the prediction from the selected agent
-        prediction = selected_agent.process_query(query, markup)
+        # Assume the best agent is the one with the highest relevance
+        selected_agent = self.agents[0]  # For simplicity, assuming the first agent as an example
 
-        # Retrieve the current popularity of the selected agent
-        popularity = self.get_agent_popularity(selected_agent)
+        # Calculate relevance score for the selected agent
+        relevance = selected_agent.evaluate(query, markup)
 
-        # Send the PML data to the registrar
-        self.send_pml_to_registrar(selected_agent.name, query, prediction, relevance)
+        # Placeholder for popularity score
+        popularity = 0.5  # Assume the popularity is static for now, can be retrieved from a registrar if needed
 
-        return selected_agent.name, prediction, relevance, popularity
-
-    def select_most_relevant_agent(self, query: str, markup: dict):
-        """Select the agent with the highest relevance score for the given query."""
-        best_agent = None
-        highest_relevance = -float('inf')
-
-        for agent in self.agents:
-            relevance = agent.evaluate(query, markup)
-            if relevance > highest_relevance:
-                highest_relevance = relevance
-                best_agent = agent
-
-        return best_agent, highest_relevance
-
-    def get_agent_popularity(self, agent):
-        """Get the popularity score of an agent from the registrar."""
-        # Here we could simulate the popularity calculation from the Registrar Service
-        # This could also be updated based on actual registrar responses
-        return 0.5  # Placeholder popularity score
-
-    def send_pml_to_registrar(self, agent_name, query, prediction, relevance):
-        """Send PML (Prompt Markup Language) data to the Registrar Service."""
-        pml_data = {
-            'agent_name': agent_name,
-            'query': query,
-            'prediction': prediction,
-            'relevance': relevance
-        }
-        # Assume the registrar is listening on port 5003
-        send_message(5003, pml_data)
+        return selected_agent.name, result, relevance, popularity

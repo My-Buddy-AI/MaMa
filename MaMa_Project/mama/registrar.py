@@ -6,6 +6,7 @@ class MAMARegistrar:
     def __init__(self, port: int):
         self.port = port
         self.agent_scores = {}  # Store agent relevance and popularity scores
+        self.agent_ports = {}   # Store the dynamically assigned ports of agents
         self.agent_query_count = {}  # Track the number of queries processed by each agent
 
     def listen_for_pml(self):
@@ -19,6 +20,10 @@ class MAMARegistrar:
         """Process a received PML message and update agent popularity."""
         agent_name = pml_message['agent_name']
         relevance = pml_message['relevance']
+        agent_port = pml_message['agent_port']
+
+        # Store the agent's dynamically assigned port
+        self.agent_ports[agent_name] = agent_port
 
         # Update agent's popularity based on relevance
         if agent_name not in self.agent_scores:
@@ -32,14 +37,8 @@ class MAMARegistrar:
         # Calculate popularity as the average relevance score per query
         popularity = self.agent_scores[agent_name] / self.agent_query_count[agent_name]
         
-        print(f"Updated popularity for {agent_name}: {popularity}")
+        print(f"Updated popularity for {agent_name} (port: {agent_port}): {popularity}")
 
-    def propagate_pml(self, port: int):
-        """Propagate PML messages to other registrars (if needed)."""
-        send_message(port, {"registrar_data": self.agent_scores})
-
-    def get_popularity(self, agent_name: str) -> float:
-        """Get the popularity score of a given agent."""
-        if agent_name in self.agent_scores:
-            return self.agent_scores[agent_name] / self.agent_query_count[agent_name]
-        return 0.0
+    def get_agent_port(self, agent_name: str) -> int:
+        """Retrieve the dynamically assigned port of an agent."""
+        return self.agent_ports.get(agent_name, None)

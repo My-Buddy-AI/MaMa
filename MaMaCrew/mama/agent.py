@@ -1,5 +1,6 @@
 import random
 import socket
+import asyncio
 import yaml
 from typing import Dict
 from .pml import PMLMessage
@@ -35,8 +36,13 @@ class CrewAIAgent:
 
         print(f"Agent '{self.name}' initialized with ports: receive={self.receive_port}, reply={self.reply_port}, PML={self.pml_port}")
 
-        # Register agent with MAMA registrar using PML
-        self.register_with_mama()
+        # Register agent with MAMA registrar using PML, check if already in an event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Await the coroutine directly if the event loop is running
+            loop.create_task(self.register_with_mama())
+        else:
+            asyncio.run(self.register_with_mama())
 
     def load_config(self, config_path: str):
         """Load the agent's configuration from the YAML file."""
@@ -44,7 +50,7 @@ class CrewAIAgent:
             config = yaml.safe_load(file)
         self.name = config['name']
         self.profile = config['profile']
-        self.specialty = config.get('specialty', 'general')  # Add specialty description from the YAML file
+        self.specialty = config.get('specialty', 'general')  # New addition for specialty
 
     def assign_dynamic_port(self):
         """Assign an available port dynamically."""
@@ -54,7 +60,7 @@ class CrewAIAgent:
         s.close()
         return port
 
-    def register_with_mama(self):
+    async def register_with_mama(self):
         """Register the agent with the MAMA registrar using PML. Retry on failure."""
         success = False
         while not success:
@@ -75,7 +81,7 @@ class CrewAIAgent:
                 }
 
                 # Send registration request via PML to Registrar
-                send_message(self.pml_port, pml_data)
+                await send_message(self.pml_port, pml_data)
                 success = True
                 print(f"Agent '{self.name}' successfully registered with MAMA.")
 
@@ -86,17 +92,12 @@ class CrewAIAgent:
                 self.reply_port = self.assign_dynamic_port()
                 print(f"Retrying registration with new ports: receive={self.receive_port}, reply={self.reply_port}")
 
-    def receive_request(self, query: str):
+    async def receive_request(self, query: str):
         """Receive a query, process it, and send the PML message."""
         print(f"Agent {self.name} received query: {query}")
 
         # Extract markup prompts from the query
         markup = self.extract_markup(query)
-
-        # Check if this agent is appropriate for the query
-        if not self.is_appropriate_agent(markup):
-            print(f"Agent {self.name}: I'm not the right agent for this query.")
-            return None
 
         # If in training mode, update the agent's knowledge
         if self.training_mode:
@@ -115,16 +116,10 @@ class CrewAIAgent:
         result = f"Agent Specialty: {self.specialty}. Result: {result}"
 
         # Send the result back to the client
-        self.send_reply(result)
+        await self.send_reply(result)
 
         # Send the PML message with the relevance score to the Registrar
-        self.send_pml(query, result, relevance)
-
-    def is_appropriate_agent(self, markup: Dict[str, float]) -> bool:
-        """Determine if this agent is appropriate for the query."""
-        # Check if the agent's profile matches the markup sufficiently (above a threshold)
-        relevance_score = self.calculate_similarity(self.profile, markup)
-        return relevance_score > 0.7  # Set threshold for whether the agent is appropriate
+        await self.send_pml(query, result, relevance)
 
     def train_agent(self, query: str, markup: Dict[str, float]):
         """Train the agent based on the input query and markup."""
@@ -148,18 +143,11 @@ class CrewAIAgent:
         return "neutral"
 
     def evaluate(self, query: str, markup: Dict[str, float]) -> float:
-        """
-        Calculate relevance score based on the agent's profile and the query markup.
-
-        This method now evaluates if the agent is appropriate to answer the query
-        and will inform the MAMA framework if it's not.
-        """
+        """Calculate relevance score based on the agent's profile and the query markup."""
         relevance = 0.0
         for tag, weight in markup.items():
             if tag in self.profile:
                 relevance += self.profile[tag] * weight
-
-        # Return the calculated relevance
         return relevance
 
     def update_relevance_with_reinforcement(self, relevance: float):
@@ -181,16 +169,16 @@ class CrewAIAgent:
         }
         return markup
 
-    def send_reply(self, result: str):
+    async def send_reply(self, result: str):
         """Send the reply to the client."""
         print(f"Agent {self.name} sending reply: {result}")
-        send_message(self.reply_port, {"agent": self.name, "result": result})
+        await send_message(self.reply_port, {"agent": self.name, "result": result})
 
-    def send_pml(self, query: str, result: str, relevance: float):
+    async def send_pml(self, query: str, result: str, relevance: float):
         """Send a PML (Prompt Markup Language) message to the Registrar."""
         pml_message = PMLMessage(agent_name=self.name, query=query, result=result, relevance=relevance, agent_port=self.reply_port)
         print(f"Agent {self.name} sending PML: {pml_message}")
-        send_message(self.pml_port, pml_message.to_dict())
+        await send_message(self.pml_port, pml_message.to_dict())
 
     @staticmethod
     def calculate_similarity(agent_profile: Dict[str, float], query_markup: Dict[str, float]) -> float:

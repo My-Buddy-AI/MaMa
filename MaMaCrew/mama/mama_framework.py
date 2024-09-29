@@ -1,4 +1,7 @@
+import asyncio
 from .registrar import MAMARegistrar
+from .agent import CrewAIAgent
+from .network import receive_message, send_message
 
 class MAMAFramework:
     """
@@ -11,7 +14,7 @@ class MAMAFramework:
         self.registrar = registrar
         self.agents = {}  # Dictionary to store agents by name
 
-    def add_agent(self, crewai_agent):
+    def add_agent(self, crewai_agent: CrewAIAgent):
         """
         Add a new CrewAI agent to the framework.
 
@@ -24,7 +27,7 @@ class MAMAFramework:
             self.agents[crewai_agent.name] = crewai_agent
             print(f"Agent '{crewai_agent.name}' added to the MAMA framework.")
 
-    def update_agent(self, crewai_agent):
+    def update_agent(self, crewai_agent: CrewAIAgent):
         """
         Update the profile or properties of an existing agent in the framework.
 
@@ -50,82 +53,64 @@ class MAMAFramework:
         else:
             print(f"Agent '{agent_name}' not found in the MAMA framework.")
 
-    def extract_sentiment(self, query: str) -> str:
+    async def process_query(self, query: str, sentiment: str):
         """
-        Extract the sentiment from the query.
-
-        This is a simplified method and can be expanded with more sophisticated NLP techniques.
-
-        Args:
-            query (str): The input query.
-
-        Returns:
-            str: The sentiment (positive, negative, neutral, etc.).
-        """
-        if "good" in query or "happy" in query:
-            return "positive"
-        elif "bad" in query or "sad" in query:
-            return "negative"
-        elif "neutral" in query:
-            return "neutral"
-        elif "not" in query and "happy" in query:
-            return "sarcasm"
-        else:
-            return "neutral"  # Default sentiment
-
-    def process_query(self, query: str):
-        """
-        Process a query by interacting with the MAMA Registrar to find the best agent.
-
+        Asynchronously process a query by interacting with the MAMA Registrar to find the best agent.
+        
         Args:
             query (str): The input query to be processed.
+            sentiment (str): The sentiment type for query classification (e.g., 'positive', 'negative', 'sarcasm').
 
         Returns:
             str: The name of the selected agent or a message indicating no suitable agent was found.
         """
-        # Extract sentiment from the query
-        sentiment = self.extract_sentiment(query)
+        print(f"Processing query '{query}' with sentiment '{sentiment}'...")
 
-        # Get a list of agents from the registrar
-        best_agent = self.registrar.evaluate_agents(query, sentiment)
-        
-        # Check if the best agent is suitable for the query
+        # Interact with the registrar to find the best agent
+        best_agent = await self.registrar.evaluate_agents(query, sentiment)
+
         if best_agent:
-            # Get agent details and request the agent to process the query
-            agent = self.agents.get(best_agent[0])
-            response = agent.receive_request(query)
+            agent_name, agent_address, agent_port = best_agent
+            print(f"Best agent for query '{query}' is '{agent_name}' at {agent_address}:{agent_port}.")
             
-            if response is None:
-                print(f"Agent '{best_agent[0]}' is not suitable, finding another agent...")
-                # Continue searching for an appropriate agent
-                best_agent = self.registrar.find_next_best_agent(query, sentiment)
-                if best_agent:
-                    agent = self.agents.get(best_agent[0])
-                    response = agent.receive_request(query)
-                else:
-                    print("No other suitable agents available.")
-                    return "No suitable agent found."
-
-            return response  # Return the response from the appropriate agent
+            # Send the query to the selected agent asynchronously
+            await self.send_query_to_agent(agent_name, agent_address, agent_port, query)
+            return agent_name
         else:
-            print("No agents available for query.")
+            print(f"No suitable agent found for query '{query}' with sentiment '{sentiment}'.")
             return "No suitable agent"
 
-    def find_next_best_agent(self, query: str, sentiment: str):
+    async def send_query_to_agent(self, agent_name: str, agent_address: str, agent_port: int, query: str):
         """
-        Find the next best agent if the current best agent is not suitable.
+        Asynchronously send the query to the selected agent with retry logic.
 
         Args:
-            query (str): The input query.
-            sentiment (str): The sentiment extracted from the query.
-
-        Returns:
-            tuple: The best agent's name, address, and port or None if no suitable agent is found.
+            agent_name (str): The name of the selected agent.
+            agent_address (str): The address of the agent.
+            agent_port (int): The port of the agent.
+            query (str): The query to be processed by the agent.
         """
-        next_best_agent = self.registrar.find_next_best_agent(query, sentiment)
-        if next_best_agent:
-            print(f"Next best agent found: {next_best_agent[0]}")
-            return next_best_agent
-        else:
-            print(f"No more agents available for query: '{query}' with sentiment '{sentiment}'")
-            return None
+        print(f"Sending query '{query}' to agent '{agent_name}' at {agent_address}:{agent_port}...")
+
+        # Sending query using the agent's communication mechanism
+        message = {"query": query}
+        
+        retries = 0
+        max_retries = 10
+        wait_time = 0.1  # 100ms
+
+        while retries < max_retries:
+            try:
+                await send_message(agent_port, message)
+                print(f"Query successfully sent to agent '{agent_name}' at {agent_address}:{agent_port}")
+                return  # Exit the function once the message is successfully sent
+            except Exception as e:
+                retries += 1
+                print(f"Failed to send query to agent '{agent_name}' at {agent_address}:{agent_port}. Attempt {retries}/{max_retries}. Error: {e}")
+                
+                if retries < max_retries:
+                    print(f"Retrying in {wait_time * 1000:.0f}ms...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Exceeded max retries. Could not send query to agent '{agent_name}' at {agent_address}:{agent_port}.")
+                    return

@@ -1,69 +1,82 @@
-import socket
-import json
-import time
+import aiohttp
+import asyncio
 
-def send_message(port, message, retries=3, wait_time=0.02):
+async def send_message(port: int, message: dict):
     """
-    Send a JSON message to the specified port. Retries if the connection fails, with a wait time between retries.
+    Sends an asynchronous HTTP POST request to a specified port with a given message.
     
     Args:
-        port (int): The port to send the message to.
-        message (dict): The message to send.
-        retries (int): Number of retry attempts.
-        wait_time (float): Time (in seconds) to wait between retries. Default is 20ms (0.02 seconds).
+        port (int): The port number where the message should be sent.
+        message (dict): The message to send in JSON format.
+    
+    Raises:
+        Exception: If the message cannot be sent after retries.
     """
-    for attempt in range(retries):
+    url = f'http://localhost:{port}'
+
+    retries = 0
+    max_retries = 10
+    wait_time = 0.1  # 100ms
+
+    while retries < max_retries:
         try:
-            # Create a socket connection
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(('localhost', port))
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=message) as response:
+                    if response.status == 200:
+                        print(f"Message sent successfully to port {port}.")
+                        return
+                    else:
+                        raise Exception(f"Failed to send message to port {port}. Status: {response.status}, Reason: {response.reason}")
+        except Exception as e:
+            retries += 1
+            print(f"Failed to send message to port {port}. Attempt {retries}/{max_retries}. Error: {e}")
 
-            # Send the message
-            s.sendall(json.dumps(message).encode('utf-8'))
-
-            # Close the socket after sending
-            s.close()
-
-            print(f"Message successfully sent to port {port}")
-            return  # Exit the function if the message is sent successfully
-
-        except socket.error as e:
-            print(f"Failed to send message to port {port}: {e}")
-            if attempt < retries - 1:
-                print(f"Retrying in {wait_time * 1000}ms... (Attempt {attempt + 1} of {retries})")
-                time.sleep(wait_time)  # Wait for the specified wait time before retrying
+            if retries < max_retries:
+                await asyncio.sleep(wait_time)
             else:
-                print(f"All {retries} attempts to send the message failed.")
+                raise Exception(f"Exceeded max retries. Could not send message to port {port}.")
 
-def receive_message(port):
+async def receive_message(port: int):
     """
-    Listen for incoming messages on the specified port.
+    Asynchronously listen on a specified port to receive a message.
     
     Args:
-        port (int): The port to listen on.
-
+        port (int): The port number to listen on for incoming messages.
+    
     Returns:
-        dict: The received message, parsed from JSON format.
+        dict: The received message as a dictionary.
+    
+    Raises:
+        Exception: If the message cannot be received.
     """
-    try:
-        # Create a socket to listen for incoming connections
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('localhost', port))
-        s.listen(1)
+    retries = 0
+    max_retries = 10
+    wait_time = 0.1  # 100ms
 
-        print(f"Listening for messages on port {port}...")
-
-        conn, addr = s.accept()
-        with conn:
-            print(f"Connection established with {addr}")
-            data = conn.recv(1024)
-            if data:
-                message = json.loads(data.decode('utf-8'))
-                print(f"Message received: {message}")
+    server = None
+    while retries < max_retries:
+        try:
+            # Define a coroutine that will be used to handle connections
+            async def handle_connection(reader, writer):
+                data = await reader.read(1024)
+                message = data.decode()
+                print(f"Received message: {message}")
                 return message
 
-    except socket.error as e:
-        print(f"Failed to receive message on port {port}: {e}")
+            # Create a TCP server to listen on the specified port
+            server = await asyncio.start_server(handle_connection, host='0.0.0.0', port=port)
+            async with server:
+                await server.serve_forever()
 
-    finally:
-        s.close()
+        except Exception as e:
+            retries += 1
+            print(f"Failed to receive message on port {port}. Attempt {retries}/{max_retries}. Error: {e}")
+
+            if retries < max_retries:
+                await asyncio.sleep(wait_time)
+            else:
+                raise Exception(f"Exceeded max retries. Could not receive message on port {port}.")
+        finally:
+            if server:
+                server.close()
+                await server.wait_closed()

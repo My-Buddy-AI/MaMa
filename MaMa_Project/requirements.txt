@@ -1,2 +1,10 @@
-datasets
-numpy==1.21.0
+# Core dependencies
+datasets      # To load the SST-2 dataset (Huggingface datasets library)
+numpy        # For numerical operations if needed
+pandas       # For CSV file generation and handling
+
+# Networking and threading support
+socket       # Standard Python socket library for networking communication
+
+# Optional but useful
+tqdm        # For progress bars when processing large datasets (if needed)

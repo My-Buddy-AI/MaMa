@@ -2,3 +2,4 @@ agents:
   - path: "MaMaCrew/agents/positive_agent.yaml"
   - path: "MaMaCrew/agents/negative_agent.yaml"
   - path: "MaMaCrew/agents/sarcasm_agent.yaml"
+  - path: "MaMaCrew/agents/neutral_agent.yaml"

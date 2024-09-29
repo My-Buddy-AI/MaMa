@@ -4,3 +4,4 @@ profile:
   negative: 1.0
   sarcasm: 0.1
   complexity: 0.2
+  neutral: 0.5 

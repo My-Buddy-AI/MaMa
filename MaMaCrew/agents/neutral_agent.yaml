@@ -1,0 +1,7 @@
+name: "Neutral Sentiment Agent"
+profile:
+  positive: 0.2
+  negative: 0.2
+  sarcasm: 0.0
+  complexity: 0.2
+  neutral: 1.0 

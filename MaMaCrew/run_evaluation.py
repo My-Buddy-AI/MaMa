@@ -32,32 +32,47 @@ for agent_config in config['agents']:
 # Load SST-2 Dataset from Hugging Face
 dataset = load_dataset("glue", "sst2")
 
-# Training Phase: Train agents on the training set
+### Training Phase: Train agents on the training set
 train_data = dataset["train"]
 
-# Train agents using the training set (train all positive examples for positive agent, etc.)
-for example in train_data:
-    sentence = example['sentence']
-    label = example['label']  # SST-2 labels: 1 (positive), 0 (negative)
+# Open CSV file for writing the training evaluation results
+with open('sst2_mama_training_evaluation_results.csv', mode='w', newline='') as file:
+    writer = csv.writer(file, delimiter='#')
+    writer.writerow(['Question', 'Agentname', 'Answer value', 'Labeled Answer'])
 
-    # Convert label to string for training
-    query = sentence
-    if label == 1:
-        query += " good"  # Ensure the agent knows it's a positive sentiment
-    else:
-        query += " bad"  # Ensure the agent knows it's a negative sentiment
+    # Train agents using the training set
+    for example in train_data:
+        sentence = example['sentence']
+        label = example['label']  # SST-2 labels: 1 (positive), 0 (negative)
 
-    # Send the query to the MAMA framework for training
-    mama_framework.process_query(query)
+        # Send the query to the appropriate agent based on the label
+        query = sentence
+        labeled_answer = "positive" if label == 1 else "negative"
+        
+        if label == 1:
+            # Positive sentiment query for positive agent
+            query += " good"  # Positive query for training
+            selected_agent = mama_framework.process_query(query)
+        else:
+            # Negative sentiment query for negative agent
+            query += " bad"  # Negative query for training
+            selected_agent = mama_framework.process_query(query)
 
-print("Training phase completed.")
+        # Write training result to the CSV file
+        writer.writerow([f"Question: {sentence}", 
+                         f"Agentname: {selected_agent}", 
+                         f"Answer value: {selected_agent}", 
+                         f"Labeled Answer: {labeled_answer}"])
 
-# Evaluation Phase: Evaluate on test set
-test_data = dataset["test"]
+print("Training phase completed. Results written to 'sst2_mama_training_evaluation_results.csv'.")
+
+### Validation Phase: Evaluate on the evaluation set (which we can simulate from the test set)
+validation_data = dataset["validation"] if "validation" in dataset else dataset["test"]  # In case SST-2 doesn't have validation split
 y_true = []
 y_pred = []
 
-for example in test_data:
+# Validate agents using the validation set
+for example in validation_data:
     sentence = example['sentence']
     label = example['label']  # SST-2 labels: 1 (positive), 0 (negative)
 
@@ -71,33 +86,72 @@ for example in test_data:
     # The predicted answer is the selected agent's response (either "positive" or "negative")
     y_pred.append(selected_agent)
 
-# Calculate accuracy
-accuracy = accuracy_score(y_true, y_pred)
-print(f"Test set accuracy: {accuracy * 100:.2f}%")
+# Calculate accuracy on validation set
+validation_accuracy = accuracy_score(y_true, y_pred)
+print(f"Validation set accuracy: {validation_accuracy * 100:.2f}%")
 
-# Retrain if accuracy is below threshold
-if accuracy < 0.80:  # Threshold for retraining
-    print("Accuracy below threshold, retraining agents...")
-    # Re-run the training phase
+# Retrain if validation accuracy is below threshold
+if validation_accuracy < 0.80:  # Threshold for retraining
+    print("Validation accuracy below threshold, retraining agents...")
+
+    # Re-run the training phase, including sarcasm agent retraining
     for example in train_data:
         sentence = example['sentence']
         label = example['label']
         query = sentence
         if label == 1:
-            query += " good"
+            query += " good"  # Retrain positive agent
         else:
-            query += " bad"
+            query += " bad"  # Retrain negative agent
         mama_framework.process_query(query)
 
-    # Re-evaluate after retraining
+    # Re-run validation after retraining
     y_pred = []
-    for example in test_data:
+    for example in validation_data:
         sentence = example['sentence']
         selected_agent = mama_framework.process_query(sentence)
         y_pred.append(selected_agent)
 
-    accuracy = accuracy_score(y_true, y_pred)
-    print(f"Accuracy after retraining: {accuracy * 100:.2f}%")
+    validation_accuracy = accuracy_score(y_true, y_pred)
+    print(f"Validation accuracy after retraining: {validation_accuracy * 100:.2f}%")
 
-# Final evaluation completed.
-print("Final evaluation completed.")
+# Only proceed to the test set if validation is successful
+if validation_accuracy >= 0.80:
+    ### Test Phase: Evaluate on the test set
+    test_data = dataset["test"]
+    y_true = []
+    y_pred = []
+
+    # Open CSV file for writing the test evaluation results
+    with open('sst2_mama_test_evaluation_results.csv', mode='w', newline='') as file:
+        writer = csv.writer(file, delimiter='#')
+        writer.writerow(['Question', 'Agentname', 'Answer value'])
+
+        # Iterate over the test dataset for evaluation
+        for example in test_data:
+            sentence = example['sentence']
+            label = example['label']  # SST-2 labels: 1 (positive), 0 (negative)
+
+            # Convert label to string for evaluation
+            correct_answer = "positive" if label == 1 else "negative"
+            y_true.append(correct_answer)
+
+            # Process the sentence through the MAMA framework
+            selected_agent = mama_framework.process_query(sentence)
+
+            # The predicted answer is the selected agent's response (either "positive" or "negative")
+            y_pred.append(selected_agent)
+
+            # Write test result to the CSV file
+            writer.writerow([f"Question: {sentence}", 
+                             f"Agentname: {selected_agent}", 
+                             f"Answer value: {selected_agent}"])
+
+    # Calculate final accuracy on the test set
+    test_accuracy = accuracy_score(y_true, y_pred)
+    print(f"Test set accuracy: {test_accuracy * 100:.2f}%")
+
+    # Final evaluation completed.
+    print("Final evaluation completed. Test results written to 'sst2_mama_test_evaluation_results.csv'.")
+else:
+    print("Validation failed, did not proceed to test phase.")

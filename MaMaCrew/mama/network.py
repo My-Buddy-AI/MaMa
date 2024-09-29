@@ -1,67 +1,69 @@
 import socket
 import json
+import time
 
-
-def find_available_port(start_port: int = 8000, max_retries: int = 100) -> int:
+def send_message(port, message, retries=3, wait_time=0.02):
     """
-    Find an available port starting from `start_port`. If the port is in use, 
-    try the next port until a free one is found or until `max_retries` is reached.
-    
-    Args:
-        start_port (int): The starting port to check.
-        max_retries (int): The number of ports to check before failing.
-        
-    Returns:
-        int: The available port number.
-    """
-    for port in range(start_port, start_port + max_retries):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(('localhost', port))  # Attempt to bind to the port
-            s.close()
-            return port  # Port is available
-        except OSError:
-            continue  # Try the next port
-    raise OSError(f"Could not find available port after {max_retries} attempts")
-
-
-def send_message(port: int, message: dict):
-    """
-    Send a message to a specific port. Retry sending if the port is not available.
+    Send a JSON message to the specified port. Retries if the connection fails, with a wait time between retries.
     
     Args:
         port (int): The port to send the message to.
-        message (dict): The message to send, which will be converted to JSON format.
+        message (dict): The message to send.
+        retries (int): Number of retry attempts.
+        wait_time (float): Time (in seconds) to wait between retries. Default is 20ms (0.02 seconds).
     """
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        s.connect(('localhost', port))
-        s.send(json.dumps(message).encode())
-    except socket.error as e:
-        print(f"Failed to send message to port {port}: {e}")
-    finally:
-        s.close()
+    for attempt in range(retries):
+        try:
+            # Create a socket connection
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect(('localhost', port))
 
+            # Send the message
+            s.sendall(json.dumps(message).encode('utf-8'))
 
-def receive_message(start_port: int = 8000, max_retries: int = 100) -> dict:
+            # Close the socket after sending
+            s.close()
+
+            print(f"Message successfully sent to port {port}")
+            return  # Exit the function if the message is sent successfully
+
+        except socket.error as e:
+            print(f"Failed to send message to port {port}: {e}")
+            if attempt < retries - 1:
+                print(f"Retrying in {wait_time * 1000}ms... (Attempt {attempt + 1} of {retries})")
+                time.sleep(wait_time)  # Wait for the specified wait time before retrying
+            else:
+                print(f"All {retries} attempts to send the message failed.")
+
+def receive_message(port):
     """
-    Receive a message on an available port. If the default port is in use, 
-    find the next available port within a given range.
+    Listen for incoming messages on the specified port.
     
     Args:
-        start_port (int): The starting port to bind.
-        max_retries (int): The number of ports to check if one is already in use.
-        
+        port (int): The port to listen on.
+
     Returns:
-        dict: The received message in JSON format.
+        dict: The received message, parsed from JSON format.
     """
-    port = find_available_port(start_port, max_retries)
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('localhost', port))
-    s.listen(1)
-    print(f"Listening on port {port} for incoming messages...")
-    conn, addr = s.accept()
-    data = conn.recv(1024)
-    conn.close()
-    s.close()
-    return json.loads(data.decode())
+    try:
+        # Create a socket to listen for incoming connections
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('localhost', port))
+        s.listen(1)
+
+        print(f"Listening for messages on port {port}...")
+
+        conn, addr = s.accept()
+        with conn:
+            print(f"Connection established with {addr}")
+            data = conn.recv(1024)
+            if data:
+                message = json.loads(data.decode('utf-8'))
+                print(f"Message received: {message}")
+                return message
+
+    except socket.error as e:
+        print(f"Failed to receive message on port {port}: {e}")
+
+    finally:
+        s.close()

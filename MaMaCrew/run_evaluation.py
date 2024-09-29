@@ -31,26 +31,51 @@ for agent_config in config['agents']:
 # Load SST-2 Dataset from Hugging Face
 dataset = load_dataset("glue", "sst2")
 
-# Select the test split for evaluation
-test_data = dataset["test"]
+# Select the train split for warm-up and evaluation
+train_data = dataset["train"]
 
-# Open CSV file for writing the evaluation results
-with open('sst2_mama_evaluation_results.csv', mode='w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['Sentence', 'Label', 'Selected Agent', 'Agent Answer'])
+# Open CSV file for writing the evaluation results on the training set
+with open('sst2_mama_training_evaluation_results.csv', mode='w', newline='') as file:
+    writer = csv.writer(file, delimiter='#')
+    writer.writerow(['Question', 'Agentname', 'Answer value', 'Labeled Answer'])
 
-    # Iterate over the test dataset
-    for example in test_data:
+    # Iterate over the training dataset (used for warm-up and evaluation)
+    for example in train_data:
         sentence = example['sentence']
         label = example['label']  # SST-2 labels: 1 (positive), 0 (negative)
 
         # Convert label to a string for comparison
-        correct_answer = "positive" if label == 1 else "negative"
+        labeled_answer = "positive" if label == 1 else "negative"
 
-        # Process the sentence through the MAMA framework
+        # Process the sentence through the MAMA framework to get the selected agent
         selected_agent = mama_framework.process_query(sentence)
 
-        # Write the result to the CSV file
-        writer.writerow([sentence, correct_answer, selected_agent, selected_agent])
+        # Write the result to the CSV file in the requested format
+        writer.writerow([f"Question: {sentence}", 
+                         f"Agentname: {selected_agent}", 
+                         f"Answer value: {selected_agent}", 
+                         f"Labeled Answer: {labeled_answer}"])
 
-print("Evaluation completed. Results written to 'sst2_mama_evaluation_results.csv'.")
+print("Training evaluation completed. Results written to 'sst2_mama_training_evaluation_results.csv'.")
+
+# Select the test split for final evaluation
+test_data = dataset["test"]
+
+# Open CSV file for writing the final evaluation results on the test set
+with open('sst2_mama_test_evaluation_results.csv', mode='w', newline='') as file:
+    writer = csv.writer(file, delimiter='#')
+    writer.writerow(['Question', 'Agentname', 'Answer value'])
+
+    # Iterate over the test dataset for final evaluation
+    for example in test_data:
+        sentence = example['sentence']
+
+        # Process the sentence through the MAMA framework to get the selected agent
+        selected_agent = mama_framework.process_query(sentence)
+
+        # Write the result to the CSV file in the requested format
+        writer.writerow([f"Question: {sentence}", 
+                         f"Agentname: {selected_agent}", 
+                         f"Answer value: {selected_agent}"])
+
+print("Test evaluation completed. Results written to 'sst2_mama_test_evaluation_results.csv'.")

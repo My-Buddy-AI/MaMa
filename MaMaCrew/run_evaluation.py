@@ -18,7 +18,7 @@ registrar_thread.start()
 mama_framework = MAMAFramework(registrar=MAMARegistrar())
 
 # Load CrewAI agent configurations
-with open('configs/creawai_config.yaml', 'r') as file:
+with open('MaMaCrew/configs/creawai_config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 # Register all CrewAI agents from the configuration file

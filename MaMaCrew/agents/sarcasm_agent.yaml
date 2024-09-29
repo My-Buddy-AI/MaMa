@@ -1,7 +1,8 @@
 name: "Sarcasm Detection Agent"
 profile:
-  positive: 0.4
+  positive: 0.3
   negative: 0.4
   sarcasm: 1.0
-  complexity: 0.7
-  neutral: 0.4 
+  complexity: 0.5
+  neutral: 0.2
+specialty: "This agent specializes in detecting sarcasm, irony, and humorous statements that may otherwise appear positive or negative, but are intended to convey the opposite."

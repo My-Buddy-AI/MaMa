@@ -35,7 +35,7 @@ class CrewAIAgent:
 
         print(f"Agent '{self.name}' initialized with ports: receive={self.receive_port}, reply={self.reply_port}, PML={self.pml_port}")
 
-        # Register agent with MAMA registrar using PML, retrying if the registration fails
+        # Register agent with MAMA registrar using PML
         self.register_with_mama()
 
     def load_config(self, config_path: str):
@@ -44,6 +44,7 @@ class CrewAIAgent:
             config = yaml.safe_load(file)
         self.name = config['name']
         self.profile = config['profile']
+        self.specialty = config.get('specialty', 'general')  # Add specialty description from the YAML file
 
     def assign_dynamic_port(self):
         """Assign an available port dynamically."""
@@ -67,6 +68,7 @@ class CrewAIAgent:
                 pml_data = {
                     'agent_name': self.name,
                     'expertise_profile': self.profile,
+                    'specialty': self.specialty,  # Register the specialty of the agent
                     'relevance': self.relevance_score,
                     'address': agent_address,
                     'port': self.receive_port
@@ -104,6 +106,9 @@ class CrewAIAgent:
         # Generate a result based on the query and markup
         result = self.process_query(query, markup)
 
+        # Propagate the specialty in the response
+        result = f"Agent Specialty: {self.specialty}. Result: {result}"
+
         # Send the result back to the client
         self.send_reply(result)
 
@@ -120,7 +125,7 @@ class CrewAIAgent:
         elif "sarcasm" in query:
             self.relevance_score += 0.1  # Increase the relevance for sarcasm
         elif "neutral" in query:
-            self.relevance_score += 0.1  # Increase the relevance for sarcasm
+            self.relevance_score += 0.1  # Increase the relevance for neutral queries
 
     def process_query(self, query: str, markup: Dict[str, float]) -> str:
         """Process the query based on the content and return a response."""
@@ -148,7 +153,6 @@ class CrewAIAgent:
 
     def extract_markup(self, query: str) -> Dict[str, float]:
         """Extract markup prompts from the input query."""
-        # Simplified sentiment tagging logic
         markup = {
             "positive": 0.8 if "good" in query or "happy" in query else 0.2,
             "negative": 0.8 if "bad" in query or "sad" in query else 0.2,

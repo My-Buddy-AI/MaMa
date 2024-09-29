@@ -2,6 +2,7 @@ name: "Neutral Sentiment Agent"
 profile:
   positive: 0.2
   negative: 0.2
-  sarcasm: 0.0
-  complexity: 0.2
-  neutral: 1.0 
+  sarcasm: 0.1
+  complexity: 0.3
+  neutral: 1.0
+specialty: "This agent specializes in handling neutral queries where the sentiment is neither strongly positive nor negative, focusing on factual or unemotional content."

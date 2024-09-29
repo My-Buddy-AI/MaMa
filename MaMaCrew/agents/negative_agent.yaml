@@ -4,4 +4,5 @@ profile:
   negative: 1.0
   sarcasm: 0.1
   complexity: 0.2
-  neutral: 0.5 
+  neutral: 0.2
+specialty: "This agent is focused on identifying negative sentiment, including frustration, disappointment, and sadness, with a focus on personal grievances and difficult experiences."

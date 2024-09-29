@@ -3,5 +3,6 @@ profile:
   positive: 1.0
   negative: 0.2
   sarcasm: 0.1
-  complexity: 0.2
-  neutral: 0.5 
+  complexity: 0.3
+  neutral: 0.1
+specialty: "This agent specializes in detecting highly positive sentiment, such as joy, satisfaction, and optimism in both personal and professional contexts."

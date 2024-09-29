@@ -1,0 +1,4 @@
+agents:
+  - path: "agents/positive_agent.yaml"
+  - path: "agents/negative_agent.yaml"
+  - path: "agents/sarcasm_agent.yaml"

@@ -1,4 +1,5 @@
 import csv
+import yaml
 from mama.agent import CrewAIAgent
 from mama.mama_framework import MAMAFramework
 from mama.registrar import MAMARegistrar
@@ -16,15 +17,15 @@ registrar_thread.start()
 # Initialize the MAMA framework
 mama_framework = MAMAFramework(registrar=MAMARegistrar())
 
-# Define sentiment classification agents based on SST-2 task
-agents = [
-    CrewAIAgent("Positive Sentiment", {"positive": 1.0, "negative": 0.2}),
-    CrewAIAgent("Negative Sentiment", {"positive": 0.2, "negative": 1.0}),
-    CrewAIAgent("Neutral Sentiment", {"positive": 0.5, "negative": 0.5})  # For any neutral sentence
-]
+# Load CrewAI agent configurations
+with open('configs/creawai_config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
-# Add agents to the MAMA framework
-for agent in agents:
+# Register all CrewAI agents from the configuration file
+agents = []
+for agent_config in config['agents']:
+    agent = CrewAIAgent(agent_config['path'])
+    agents.append(agent)
     mama_framework.add_agent(agent)
 
 # Load SST-2 Dataset from Hugging Face

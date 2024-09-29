@@ -1,0 +1,6 @@
+name: "Positive Sentiment Agent"
+profile:
+  positive: 1.0
+  negative: 0.2
+  sarcasm: 0.1
+  complexity: 0.2

@@ -1,26 +1,26 @@
 import random
 import socket
+import yaml
 from typing import Dict
 from .pml import PMLMessage
 from .network import send_message
 
 
-class MishmashStyleAgent:
+class CrewAIAgent:
     """
-    An agent specialized in handling complex, mixed, or conflicting styles and genres.
-    This agent can detect ambiguity, sarcasm, and complex tonal shifts within a single text.
-    It registers dynamically with the MAMA registrar and uses reinforcement learning to improve over time.
+    CrewAI agent that dynamically registers with MAMA using PML. It updates its relevance score
+    based on reinforcement learning feedback after each query.
     """
 
-    def __init__(self, profile: Dict[str, float]):
+    def __init__(self, config_path: str):
         """
-        Initialize the MishmashStyleAgent dynamically based on its profile.
+        Initialize the CrewAI agent from a YAML configuration file.
 
         Args:
-            profile (Dict[str, float]): Profile describing the agent's ability to handle conflicting styles, sentiments, etc.
+            config_path (str): The path to the agent's YAML configuration file.
         """
-        self.name = "MishmashStyleAgent"
-        self.profile = profile  # Expertise profile (e.g., {"positive": 0.3, "negative": 0.3, "sarcasm": 0.7, "complexity": 1.0})
+        self.config_path = config_path
+        self.load_config(config_path)
         self.popularity = 0
         self.relevance_score = 0.0  # Initial relevance score for RL evaluation
 
@@ -34,12 +34,19 @@ class MishmashStyleAgent:
         # Register agent with MAMA registrar using PML
         self.register_with_mama()
 
+    def load_config(self, config_path: str):
+        """Load the agent's configuration from the YAML file."""
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+        self.name = config['name']
+        self.profile = config['profile']
+
     def assign_dynamic_port(self):
         """Assign an available port dynamically."""
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', 0))  # Bind to an available port
         port = s.getsockname()[1]  # Get the dynamically assigned port
-        s.close()  # Release the socket
+        s.close()
         return port
 
     def register_with_mama(self):
@@ -85,13 +92,11 @@ class MishmashStyleAgent:
 
     def process_query(self, query: str, markup: Dict[str, float]) -> str:
         """Process the query based on the content and return a response."""
-        # This agent can handle mixed styles, ambiguity, and sarcasm
-        if "not" in query and "bad" in query:
-            return "sarcasm"
-        elif "good" in query and "bad" in query:
-            return "ambiguous"
-        elif "complex" in query or "mishmash" in query:
-            return "complex"
+        # Simulate query handling based on profile (simplified for demo purposes)
+        if "good" in query:
+            return "positive"
+        elif "bad" in query:
+            return "negative"
         return "neutral"
 
     def evaluate(self, query: str, markup: Dict[str, float]) -> float:
@@ -111,11 +116,12 @@ class MishmashStyleAgent:
 
     def extract_markup(self, query: str) -> Dict[str, float]:
         """Extract markup prompts from the input query."""
+        # Simplified sentiment tagging logic
         markup = {
-            "positive": 0.5 if "good" in query else 0.2,
-            "negative": 0.5 if "bad" in query else 0.2,
+            "positive": 0.8 if "good" in query or "happy" in query else 0.2,
+            "negative": 0.8 if "bad" in query or "sad" in query else 0.2,
             "sarcasm": 0.9 if "not" in query and "happy" in query else 0.1,
-            "complexity": 1.0 if "complex" in query or "mishmash" in query else 0.1
+            "complexity": 0.5 if "complex" in query else 0.2
         }
         return markup
 

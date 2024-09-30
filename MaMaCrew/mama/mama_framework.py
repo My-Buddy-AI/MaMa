@@ -1,7 +1,7 @@
-import asyncio
 from .registrar import MAMARegistrar
 from .agent import CrewAIAgent
 from .network import receive_message, send_message
+import time
 
 class MAMAFramework:
     """
@@ -53,36 +53,63 @@ class MAMAFramework:
         else:
             print(f"Agent '{agent_name}' not found in the MAMA framework.")
 
-    async def process_query(self, query: str, sentiment: str):
-        """
-        Asynchronously process a query by interacting with the MAMA Registrar to find the best agent.
-        
-        Args:
-            query (str): The input query to be processed.
-            sentiment (str): The sentiment type for query classification (e.g., 'positive', 'negative', 'sarcasm').
-
-        Returns:
-            str: The name of the selected agent or a message indicating no suitable agent was found.
-        """
-        print(f"Processing query '{query}' with sentiment '{sentiment}'...")
-
-        # Interact with the registrar to find the best agent
-        best_agent = await self.registrar.evaluate_agents(query, sentiment)
-
-        if best_agent:
-            agent_name, agent_address, agent_port = best_agent
-            print(f"Best agent for query '{query}' is '{agent_name}' at {agent_address}:{agent_port}.")
+    def training(self, query: str, sentiment: str):
+            """
+            Process a query by interacting with the MAMA Registrar to find the best agent.
             
-            # Send the query to the selected agent asynchronously
-            await self.send_query_to_agent(agent_name, agent_address, agent_port, query)
-            return agent_name
-        else:
-            print(f"No suitable agent found for query '{query}' with sentiment '{sentiment}'.")
-            return "No suitable agent"
+            Args:
+                query (str): The input query to be processed.
+                sentiment (str): The sentiment type for query classification (e.g., 'positive', 'negative', 'sarcasm').
 
-    async def send_query_to_agent(self, agent_name: str, agent_address: str, agent_port: int, query: str):
+            Returns:
+                str: The name of the selected agent or a message indicating no suitable agent was found.
+            """
+            print(f"Processing query '{query}' with sentiment '{sentiment}'...")
+
+            # Interact with the registrar to find the best agent (synchronously)
+            best_agent = self.registrar.training(query,sentiment)
+
+            if best_agent:
+                agent_name, agent_address, agent_port = best_agent
+                print(f"Best agent for query '{query}' is '{agent_name}' at {agent_address}:{agent_port}.")
+                
+                # Send the query to the selected agent synchronously
+                self.send_query_to_agent(agent_name, agent_address, agent_port, query)
+                return agent_name
+            else:
+                #print(f"No suitable agent found for query '{query}' with sentiment '{sentiment}'.")
+                return "No suitable agent"
+        
+    def process_query(self, query: str, sentiment: str):
+            """
+            Process a query by interacting with the MAMA Registrar to find the best agent.
+            
+            Args:
+                query (str): The input query to be processed.
+                sentiment (str): The sentiment type for query classification (e.g., 'positive', 'negative', 'sarcasm').
+
+            Returns:
+                str: The name of the selected agent or a message indicating no suitable agent was found.
+            """
+            print(f"Processing query '{query}' with sentiment '{sentiment}'...")
+
+            # Interact with the registrar to find the best agent (synchronously)
+            best_agent = self.registrar.evaluate_agents(query)
+
+            if best_agent:
+                agent_name, agent_address, agent_port = best_agent
+                print(f"Best agent for query '{query}' is '{agent_name}' at {agent_address}:{agent_port}.")
+                
+                # Send the query to the selected agent synchronously
+                self.send_query_to_agent(agent_name, agent_address, agent_port, query)
+                return agent_name
+            else:
+                #print(f"No suitable agent found for query '{query}' with sentiment '{sentiment}'.")
+                return "No suitable agent"
+
+    def send_query_to_agent(self, agent_name: str, agent_address: str, agent_port: int, query: str):
         """
-        Asynchronously send the query to the selected agent with retry logic.
+        Send the query to the selected agent with retry logic.
 
         Args:
             agent_name (str): The name of the selected agent.
@@ -101,7 +128,7 @@ class MAMAFramework:
 
         while retries < max_retries:
             try:
-                await send_message(agent_port, message)
+                send_message(agent_port, message)  # Synchronous message sending
                 print(f"Query successfully sent to agent '{agent_name}' at {agent_address}:{agent_port}")
                 return  # Exit the function once the message is successfully sent
             except Exception as e:
@@ -110,7 +137,7 @@ class MAMAFramework:
                 
                 if retries < max_retries:
                     print(f"Retrying in {wait_time * 1000:.0f}ms...")
-                    await asyncio.sleep(wait_time)
+                    time.sleep(wait_time)  # Synchronous wait
                 else:
                     print(f"Exceeded max retries. Could not send query to agent '{agent_name}' at {agent_address}:{agent_port}.")
                     return

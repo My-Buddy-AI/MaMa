@@ -51,6 +51,34 @@ class MAMARegistrar:
         self.agent_registry = self.load_pml_data()  
         print(f"Registered agent '{agent_name}' at {agent_address}:{agent_port} with relevance score: {relevance_score}")
 
+    def is_query_within_scope(self, query: str, agent_data: dict) -> bool:
+        """
+        Check if the provided query matches the scope of the agent based on its specialty, profile, or prompt.
+
+        Args:
+            query (str): The query to check.
+            agent_data (dict): The data of the agent (loaded from YAML) which includes its specialty, profile, etc.
+
+        Returns:
+            bool: True if the query matches the agent's scope, False otherwise.
+        """
+        specialty = agent_data.get('specialty', '').lower()
+        profile = agent_data.get('profile', {})
+
+        # Check for relevant terms or phrases in the query to see if they align with the agent's specialty
+        # For the mischievousness agent, we would look for rebellious, playful, or gross-out humor
+        if "mischievous" in specialty or "rebellion" in specialty or "humor" in specialty:
+            if any(term in query.lower() for term in ["hide", "secrecy", "secretions", "parental", "mischief"]):
+                return True
+
+        # If there are specific characteristics in the profile that we want to match
+        sarcasm_level = profile.get('sarcasm', 0)
+        if sarcasm_level > 0.5 and "sarcasm" in query.lower():
+            return True
+
+        # Add other specific checks if needed
+        return False
+
     def training(self, query: str):
         """
         Train all agents with the provided query. Each agent's relevance score (similarity)
@@ -66,22 +94,31 @@ class MAMARegistrar:
         relevant_agents = []
         similarity_threshold = 0.7  # 70% similarity threshold
 
-      
         # Vectorize the query (convert to embedding for similarity calculation)
         query_embedding = self.vectorize_text(query)
 
-        # Check all agents
-        self.agent_registry = self.load_pml_data()  
+        # Load all agents' configuration data from their respective YAML files
+        self.agent_registry = self.load_pml_data()
+
         for agent_name, data in self.agent_registry.items():
+            # Check if the query falls within the agent's scope
+            if not self.is_query_within_scope(query, data):
+                print(f"Query '{query}' is not within the scope of agent '{agent_name}'")
+                continue  # Skip to the next agent if the query doesn't match the scope
+
+            # Retrieve agent-specific configurations
             agent_prompt = data.get('prompt', '')
-
-            # Compute similarity between the query and the agent's prompt
+            
+            # Vectorize the agent's prompt for similarity calculation
             agent_prompt_embedding = self.vectorize_text(agent_prompt)
+            
+            # Calculate the similarity between the query and the agent's prompt
             similarity_score = cosine_similarity([query_embedding], [agent_prompt_embedding])[0][0]
-
-            # Check if similarity score is greater than 70%
+            
+            # Check if the similarity score is greater than the threshold
             if similarity_score >= similarity_threshold:
                 print(f"Agent '{agent_name}' has a similarity score of {similarity_score:.2f} for query: '{query}'")
+                
                 # Add the query to this agent's history
                 self.add_query_to_history(agent_name, query)
                 print(f"Query '{query}' added to the history of agent '{agent_name}'")

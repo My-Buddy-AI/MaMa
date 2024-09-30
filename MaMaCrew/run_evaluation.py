@@ -38,7 +38,8 @@ config_files = [
     'MaMaCrew/agents/positive_agent.yaml',
     'MaMaCrew/agents/negative_agent.yaml',
     'MaMaCrew/agents/sarcasm_agent.yaml',
-    'MaMaCrew/agents/neutral_agent.yaml'
+    'MaMaCrew/agents/neutral_agent.yaml',
+    "MaMaCrew/agents/mischievousness_agent.yaml"
 ]
 
 agents = []

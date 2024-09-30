@@ -3,3 +3,4 @@ agents:
   - path: "MaMaCrew/agents/negative_agent.yaml"
   - path: "MaMaCrew/agents/sarcasm_agent.yaml"
   - path: "MaMaCrew/agents/neutral_agent.yaml"
+  - path: "MaMaCrew/agents/mischievousness_agent.yaml"

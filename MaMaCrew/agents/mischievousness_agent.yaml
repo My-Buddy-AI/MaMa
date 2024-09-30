@@ -1,0 +1,26 @@
+name: "Mischievousness Sentiment Agent"
+
+profile:
+  positive: 0.1
+  negative: 0.3
+  sarcasm: 0.6
+  complexity: 0.3
+  neutral: 0.4
+
+specialty: |
+  This agent is specialized in identifying playful mischievousness, light sarcasm, and humorous rebellion in language. 
+  It recognizes phrases that involve joking or subtle avoidance of authority, particularly in personal or family contexts. 
+  It is attuned to odd or quirky expressions, bodily humor, and mild attempts to conceal actions from figures of authority like parents.
+  This agent identifies playful mischievousness, humorous rebellion, and sarcastic tones, especially in contexts involving avoidance of authority or gross-out humor. It detects language patterns that involve hiding or sneaking behavior, particularly in familial or authority-driven contexts.
+behavior:
+  - Detects humor disguised as negative or rebellious actions (e.g., hiding something embarrassing or odd).
+  - Recognizes sarcasm and non-standard language choices like "parental units" as indicators of humor or detachment.
+  - Flags biological or gross-out references such as "new secretions" that add to the playful tone.
+  - Interprets actions like "hide" as mild mischief or playful rebellion rather than serious deceit.
+  - Captures the blend of humor and mild negativity aimed at authority figures or parents, without strong emotional negativity.
+
+example_phrases:
+  - "Hide new secretions from the parental units"
+  - "Avoid telling the boss about the accidental spill"
+  - "Sneak the cookies before mom notices"
+  - "Pretend the project was finished on time"

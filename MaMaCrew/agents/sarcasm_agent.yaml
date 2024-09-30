@@ -5,4 +5,16 @@ profile:
   sarcasm: 1.0
   complexity: 0.5
   neutral: 0.2
-specialty: "This agent specializes in detecting sarcasm, irony, and humorous statements that may otherwise appear positive or negative, but are intended to convey the opposite."
+specialty: |
+  This agent specializes in detecting sarcasm, irony, and humorous statements that may otherwise appear positive 
+  or negative, but are intended to convey the opposite.
+behavior:
+  - Detects sarcasm and ironic statements, especially when the tone contrasts with the literal meaning.
+  - Flags exaggerated or overly enthusiastic statements that are not meant to be taken seriously.
+  - Recognizes language patterns that signal humorous or biting commentary.
+  - Interprets mocking or exaggerated praise as potential sarcasm.
+example_phrases:
+  - "Oh great, another meeting... just what I needed."
+  - "Yeah, because that worked out so well last time."
+  - "What a surprise, it's raining again in Seattle."
+  - "Oh, I love it when my internet crashes in the middle of a call!"

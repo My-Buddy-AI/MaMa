@@ -28,26 +28,27 @@ example_phrases = [
     "Pretend the project was finished on time"
 ]
 
-# Define a task for the agent to analyze phrases
-task = Task(
-    description="Analyze text to detect mischievous, sarcastic, and humorous rebellion in statements.",
-    expected_output="Identify tone, humor, and mild rebelliousness in language.",
-    agent=mischief_agent
-)
-
-# Create the Crew that will manage the task with the agent
-crew = Crew(
-    agents=[mischief_agent],
-    tasks=[task],
-    verbose=True,
-    process=Process.sequential
-)
-
-# Kick off the crew to start the task
-result = crew.kickoff()
-
-# Print the result after analyzing the phrases
-print("### Analysis Results ###")
+# Create tasks for each phrase and run them
 for phrase in example_phrases:
-    print(f"Analyzing phrase: {phrase}")
+    # Define a unique task for each phrase
+    task = Task(
+        description=f"Analyze the phrase: {phrase}",
+        expected_output="Detect mischievousness, sarcasm, and rebellious behavior.",
+        agent=mischief_agent
+    )
+    
+    # Create a crew for this task
+    crew = Crew(
+        agents=[mischief_agent],
+        tasks=[task],
+        verbose=True,
+        process=Process.sequential
+    )
+    
+    # Kick off the crew to start the task
+    result = crew.kickoff()
+    
+    # Print the result after analyzing the phrase
+    print("### Analysis Results ###")
+    print(f"Phrase: {phrase}")
     print(result)

@@ -5,4 +5,16 @@ profile:
   sarcasm: 0.1
   complexity: 0.2
   neutral: 0.2
-specialty: "This agent is focused on identifying negative sentiment, including frustration, disappointment, and sadness, with a focus on personal grievances and difficult experiences."
+specialty: |
+  This agent is focused on identifying negative sentiment, including frustration, disappointment, and sadness, 
+  with a focus on personal grievances and difficult experiences.
+behavior:
+  - Detects language that conveys anger, frustration, or sadness in personal or professional settings.
+  - Recognizes complaints or grievances about products, services, or people.
+  - Flags emotionally charged phrases, especially those indicating dissatisfaction or criticism.
+  - Interprets passive-aggressive statements as potential signals of negative sentiment.
+example_phrases:
+  - "I'm really disappointed with the way this turned out."
+  - "This is the worst service I've ever experienced."
+  - "I can't believe they ignored my request."
+  - "Nothing ever goes right for me."

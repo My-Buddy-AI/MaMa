@@ -5,4 +5,16 @@ profile:
   sarcasm: 0.1
   complexity: 0.3
   neutral: 1.0
-specialty: "This agent specializes in handling neutral queries where the sentiment is neither strongly positive nor negative, focusing on factual or unemotional content."
+specialty: |
+  This agent specializes in handling neutral queries where the sentiment is neither strongly positive nor negative, 
+  focusing on factual or unemotional content.
+behavior:
+  - Detects factual statements or requests without emotional bias.
+  - Flags information-seeking language that lacks strong emotional cues.
+  - Identifies statements that are descriptive and neutral, neither positive nor negative.
+  - Recognizes balanced language in discussions of pros and cons without leaning emotionally.
+example_phrases:
+  - "The meeting is scheduled for 3 PM tomorrow."
+  - "The product arrived on time and functions as described."
+  - "I need to gather more information before making a decision."
+  - "There are both advantages and disadvantages to this approach."

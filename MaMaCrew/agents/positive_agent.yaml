@@ -5,4 +5,16 @@ profile:
   sarcasm: 0.1
   complexity: 0.3
   neutral: 0.1
-specialty: "This agent specializes in detecting highly positive sentiment, such as joy, satisfaction, and optimism in both personal and professional contexts."
+specialty: |
+  This agent specializes in detecting highly positive sentiment, such as joy, satisfaction, and optimism in both 
+  personal and professional contexts.
+behavior:
+  - Detects expressions of happiness, gratitude, or satisfaction in personal or professional environments.
+  - Flags optimistic or hopeful language, especially related to achievements or positive experiences.
+  - Identifies encouragement and compliments directed at others.
+  - Recognizes celebratory phrases or statements of excitement and joy.
+example_phrases:
+  - "I'm so happy with the results!"
+  - "This is the best day of my life!"
+  - "I'm really looking forward to this new opportunity."
+  - "You did an amazing job, congratulations!"

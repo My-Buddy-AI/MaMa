@@ -53,7 +53,7 @@ class MAMAFramework:
         else:
             print(f"Agent '{agent_name}' not found in the MAMA framework.")
 
-    def training(self, query: str, sentiment: str):
+    def training(self, query: str):
             """
             Process a query by interacting with the MAMA Registrar to find the best agent.
             
@@ -64,10 +64,10 @@ class MAMAFramework:
             Returns:
                 str: The name of the selected agent or a message indicating no suitable agent was found.
             """
-            print(f"Processing query '{query}' with sentiment '{sentiment}'...")
+            print(f"Processing query '{query}'... ")
 
             # Interact with the registrar to find the best agent (synchronously)
-            best_agent = self.registrar.training(query,sentiment)
+            best_agent = self.registrar.training(query)
 
             if best_agent:
                 agent_name, agent_address, agent_port = best_agent

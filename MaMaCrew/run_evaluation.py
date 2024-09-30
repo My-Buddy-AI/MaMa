@@ -69,12 +69,12 @@ with open('sst2_mama_training_evaluation_results.csv', mode='w', newline='') as 
         query = sentence
         labeled_answer = "positive" if label == 1 else "negative"
         
-        if label == 1:
-            query += " good"  # Positive query for training
-            selected_agent = mama_framework.training (query, "positive")
-        else:
-            query += " bad"  # Negative query for training
-            selected_agent = mama_framework.process_query(query, "negative")
+        #if label == 1:
+        #    query += " good"  # Positive query for training
+        selected_agent = mama_framework.training (query)
+        #else:
+        #    query += " bad"  # Negative query for training
+        #    selected_agent = mama_framework.training(query)
 
         # Write training result to the CSV file
         writer.writerow([f"Question: {sentence}", 

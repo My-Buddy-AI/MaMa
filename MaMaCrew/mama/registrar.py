@@ -51,52 +51,47 @@ class MAMARegistrar:
         self.agent_registry = self.load_pml_data()  
         print(f"Registered agent '{agent_name}' at {agent_address}:{agent_port} with relevance score: {relevance_score}")
 
-    def training(self, query: str, sentiment: str):
+    def training(self, query: str):
         """
-        Train the agent with the provided query and sentiment. The query is stored
-        in the agent's query history, and the most relevant agent is chosen based
-        on similarity between the query and the agent's prompt.
+        Train all agents with the provided query. Each agent's relevance score (similarity)
+        is calculated based on the query. Agents with a relevance score greater than 70%
+        will store the query in their history.
 
         Args:
             query (str): The query to train on.
-            sentiment (str): The sentiment value (e.g., 'positive', 'negative').
         
         Returns:
-            tuple: The best agent's name and the similarity score.
+            list: A list of agents who had a similarity score above 70%.
         """
-        best_agent = None
-        highest_similarity = -1
-        self.save_pml_data()
-        self.agent_registry = self.load_pml_data()
+        relevant_agents = []
+        similarity_threshold = 0.7  # 70% similarity threshold
 
+      
         # Vectorize the query (convert to embedding for similarity calculation)
         query_embedding = self.vectorize_text(query)
 
-        # Find the best agent based on similarity and sentiment expertise
+        # Check all agents
+        self.agent_registry = self.load_pml_data()  
         for agent_name, data in self.agent_registry.items():
-            agent_profile = data.get('expertise_profile', {})
             agent_prompt = data.get('prompt', '')
 
-            # Check if the agent specializes in the provided sentiment
-            if sentiment in agent_profile and agent_profile[sentiment] > 0:
-                # Compute similarity between the query and the agent's prompt
-                agent_prompt_embedding = self.vectorize_text(agent_prompt)
-                similarity_score = cosine_similarity([query_embedding], [agent_prompt_embedding])[0][0]
+            # Compute similarity between the query and the agent's prompt
+            agent_prompt_embedding = self.vectorize_text(agent_prompt)
+            similarity_score = cosine_similarity([query_embedding], [agent_prompt_embedding])[0][0]
 
-                # Check if this is the highest similarity score so far
-                if similarity_score > highest_similarity:
-                    highest_similarity = similarity_score
-                    best_agent = agent_name
+            # Check if similarity score is greater than 70%
+            if similarity_score >= similarity_threshold:
+                print(f"Agent '{agent_name}' has a similarity score of {similarity_score:.2f} for query: '{query}'")
+                # Add the query to this agent's history
+                self.add_query_to_history(agent_name, query)
+                print(f"Query '{query}' added to the history of agent '{agent_name}'")
+                relevant_agents.append(agent_name)
 
-        if best_agent:
-            print(f"Training agent '{best_agent}' with query: {query}")
-            print(f"Similarity score: {highest_similarity}")
-            # Simulate training the agent (in reality, you would add your training logic here)
-            self.add_query_to_history(best_agent, query)
-            print(f"Query '{query}' added to the history of agent '{best_agent}'")
-            return best_agent
+        if relevant_agents:
+            print(f"Agents trained with query '{query}': {', '.join(relevant_agents)}")
+            return relevant_agents
         else:
-            print(f"No suitable agent found for sentiment '{sentiment}'")
+            print(f"No agents found with sufficient similarity for query '{query}'")
             return None
 
     def evaluate_agents(self, query: str):
@@ -117,7 +112,6 @@ class MAMARegistrar:
         query_embedding = self.vectorize_text(query)
 
         # Evaluate agents based on the prompt similarity
-        self.save_pml_data()
         self.agent_registry = self.load_pml_data()  
         for agent_name, data in self.agent_registry.items():
             agent_prompt = data.get('prompt', '')
